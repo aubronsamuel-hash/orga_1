@@ -1,8 +1,8 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import get_settings
 
@@ -38,9 +38,9 @@ def get_session_factory():
 
 
 @contextmanager
-def session_scope() -> Iterator["Session"]:
-    Session = get_session_factory()
-    session = Session()
+def session_scope() -> Iterator[Session]:
+    SessionLocal = get_session_factory()
+    session = SessionLocal()
     try:
         yield session
         session.commit()

@@ -1,17 +1,22 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...config import get_settings
 from ...db import Base, get_engine
-from ...deps import get_db, get_current_user_id
-from ...logging_utils import setup_logging
+from ...deps import get_current_user_id, get_db
 from ...models import RefreshToken, User
 from ...rate_limit import hit
 from ...schemas import LoginIn, TokenPair, UserCreate, UserOut
-from ...security import hash_password, make_access_token, make_refresh_token, sha256_hex, verify_password
+from ...security import (
+    hash_password,
+    make_access_token,
+    make_refresh_token,
+    sha256_hex,
+    verify_password,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -47,16 +52,17 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)) -> Tok
         raise HTTPException(status_code=429, detail="Trop de tentatives, reessayez plus tard")
 
     u = db.scalar(select(User).where(User.email == body.email.lower()))
-    if not u or not verify_password(body.password, u.password_hash):
-        if u:
+    if u is None or not verify_password(body.password, u.password_hash):
+        if u is not None:
             u.failed_login_attempts += 1
             if u.failed_login_attempts >= s.auth_max_fails:
-                u.locked_until = datetime.now(timezone.utc) + timedelta(minutes=s.auth_lock_minutes)
+                u.locked_until = datetime.now(UTC) + timedelta(minutes=s.auth_lock_minutes)
                 u.failed_login_attempts = 0
             db.commit()
-            raise HTTPException(status_code=401, detail="Identifiants invalides")
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
+    assert u is not None
 
-    if u.locked_until and datetime.now(timezone.utc) < u.locked_until:
+    if u.locked_until and datetime.now(UTC) < u.locked_until:
         raise HTTPException(status_code=423, detail="Compte verrouille, reessayez plus tard")
 
     if u.totp_enabled:
@@ -128,7 +134,6 @@ def logout(refresh_token: str, db: Session = Depends(get_db)) -> None:
 def enable_2fa(_: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> None:
     # Stub: just flag enabled, secret placeholder
     ensure_tables()
-    from sqlalchemy import select
 
     u = db.get(User, _)
     if not u:
