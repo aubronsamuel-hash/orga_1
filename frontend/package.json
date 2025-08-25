@@ -1,7 +1,7 @@
 {
   "name": "ccw-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,15 +15,15 @@
   },
   "dependencies": {
     "clsx": "2.1.1",
-    "class-variance-authority": "0.7.0",
     "lucide-react": "0.460.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.26.1",
+    "react-big-calendar": "1.11.4",
+    "date-fns": "3.6.0",
     "tailwind-merge": "2.5.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "4.3.1",
     "@storybook/addon-essentials": "8.1.10",
     "@storybook/react-vite": "8.1.10",
     "@testing-library/jest-dom": "6.6.3",
@@ -31,8 +31,6 @@
     "@types/node": "20.14.12",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "jest-axe": "10.0.0",
-    "@types/jest-axe": "3.5.9",
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
     "autoprefixer": "10.4.20",

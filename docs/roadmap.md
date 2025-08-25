@@ -26,10 +26,18 @@ Jalon 3 - Auth v1: EN COURS
 - [ ] RBAC fin (plus tard)
 
 Jalon 4 - Missions v1: EN COURS
-- [ ] CRUD missions/roles/assignments OK
-- [ ] Validations dates OK (coherence + overlap)
-- [ ] Audit log ecrit
-- [ ] Tests property dates
+- [x] CRUD missions/roles/assignments
+- [x] Validations dates et overlap
+- [x] Audit log
+- [x] Tests property dates
+
+Jalon 5 - Disponibilites v1: EN COURS
+- [ ] CRUD availabilities OK
+- [ ] Conflits detectes
+- [ ] Normalisation UTC stricte
+- [ ] Stress tests 1000 dispos
+- [ ] Vue calendrier (frontend)
 
 Notes:
 Ce document prime sur les autres. Proposer patch si divergence.
+
