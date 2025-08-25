@@ -1,11 +1,14 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.v1.auth import router as auth_router
+from .api.v1.router import router as v1_meta_router
+from .api.v1.users import router as users_router
 from .config import get_settings
 from .errors import install_error_handlers
 from .logging_utils import setup_logging
 from .middleware import RequestIdMiddleware
-from .api.v1.router import router as v1_router
 
 
 def create_app() -> FastAPI:
@@ -24,7 +27,9 @@ def create_app() -> FastAPI:
     )
 
     install_error_handlers(app)
-    app.include_router(v1_router, prefix="/api/v1")
+    app.include_router(v1_meta_router, prefix="/api/v1")
+    app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(users_router, prefix="/api/v1")
     return app
 
 
