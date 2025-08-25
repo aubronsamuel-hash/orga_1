@@ -1,11 +1,11 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { getMission } from "../lib/api_missions";
+import { getMission, MissionDetail } from "../lib/api_missions";
 import { getTokens } from "../lib/auth";
 
 export default function MissionDetails() {
   const { id } = useParams();
-  const [m, setM] = React.useState<any | null>(null);
+  const [m, setM] = React.useState<MissionDetail | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!id) return;
@@ -13,8 +13,8 @@ export default function MissionDetails() {
       try {
         const t = getTokens();
         setM(await getMission(Number(id), t?.access));
-      } catch (e: any) {
-        setErr(`Erreur ${e.message}`);
+      } catch (e) {
+        setErr(`Erreur ${(e as Error).message}`);
       }
     };
     void run();
@@ -28,13 +28,19 @@ export default function MissionDetails() {
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Roles</h2>
         <ul className="list-disc pl-6">
-          {m.roles.map((r: any) => <li key={r.id}>{r.name} x{r.quantity}</li>)}
+          {m.roles.map(r => (
+            <li key={r.id}>{r.name} x{r.quantity}</li>
+          ))}
         </ul>
       </div>
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Assignations</h2>
         <ul className="list-disc pl-6">
-          {m.assignments.map((a: any) => <li key={a.id}>user #{a.user_id} ({new Date(a.start_at).toLocaleTimeString()} - {new Date(a.end_at).toLocaleTimeString()})</li>)}
+          {m.assignments.map(a => (
+            <li key={a.id}>
+              user #{a.user_id} ({new Date(a.start_at).toLocaleTimeString()} - {new Date(a.end_at).toLocaleTimeString()})
+            </li>
+          ))}
         </ul>
       </div>
     </div>

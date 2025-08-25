@@ -17,6 +17,7 @@ from ...schemas import (
     MissionRoleOut,
     MissionRoleUpdate,
     MissionUpdate,
+    _to_utc,
 )
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -37,7 +38,9 @@ def _role_inside_mission(m: Mission, start_at: datetime | None, end_at: datetime
 
 
 def _assignment_inside_mission(m: Mission, start_at: datetime, end_at: datetime) -> None:
-    if start_at < m.start_at or end_at > m.end_at:
+    ms = _to_utc(m.start_at)
+    me = _to_utc(m.end_at)
+    if start_at < ms or end_at > me:
         raise HTTPException(status_code=422, detail="assignment hors mission")
     if end_at <= start_at:
         raise HTTPException(status_code=422, detail="assignment end_at doit etre > start_at")

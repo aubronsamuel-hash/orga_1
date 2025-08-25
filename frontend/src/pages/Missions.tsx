@@ -1,10 +1,10 @@
 import React from "react";
-import { listMissions } from "../lib/api_missions";
+import { listMissions, Mission } from "../lib/api_missions";
 import { getTokens } from "../lib/auth";
 import { Link } from "react-router-dom";
 
 export default function Missions() {
-  const [arr, setArr] = React.useState<any[] | null>(null);
+  const [arr, setArr] = React.useState<Mission[] | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   React.useEffect(() => {
     const run = async () => {
@@ -12,8 +12,8 @@ export default function Missions() {
         const t = getTokens();
         const data = await listMissions(t?.access);
         setArr(data);
-      } catch (e: any) {
-        setErr(`Erreur ${e.message}`);
+      } catch (e) {
+        setErr(`Erreur ${(e as Error).message}`);
       }
     };
     void run();

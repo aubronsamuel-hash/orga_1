@@ -1,5 +1,8 @@
 export type Mission = { id: number; title: string; location?: string | null; start_at: string; end_at: string };
-export type MissionDetail = Mission & { roles: Array<{ id: number; name: string; quantity: number }>; assignments: Array<{ id: number; user_id: number }> };
+export type MissionDetail = Mission & {
+  roles: Array<{ id: number; name: string; quantity: number }>;
+  assignments: Array<{ id: number; user_id: number; start_at: string; end_at: string }>;
+};
 
 const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
 

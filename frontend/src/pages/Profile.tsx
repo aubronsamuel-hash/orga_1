@@ -3,15 +3,20 @@ import { authHeader, getTokens, setTokens } from "../lib/auth";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
 
+type Me = { email: string; is_admin: boolean; totp_enabled: boolean };
+
 export default function Profile() {
-  const [me, setMe] = React.useState<any | null>(null);
+  const [me, setMe] = React.useState<Me | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const run = async () => {
       const r = await fetch(`${BASE}/users/me`, { headers: authHeader() });
-      if (!r.ok) { setErr(`Erreur ${r.status}`); return; }
-      setMe(await r.json());
+      if (!r.ok) {
+        setErr(`Erreur ${r.status}`);
+        return;
+      }
+      setMe((await r.json()) as Me);
     };
     void run();
   }, []);
