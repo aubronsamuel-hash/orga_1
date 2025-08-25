@@ -15,11 +15,22 @@ Conventions:
 - RGPD: export, droit a l oubli, retention 30j dev/stage, 90j prod
 
 Jalon 0 - Bootstrap:
-- [ ] Arborescence creee
-- [ ] Fichiers racine complets
-- [ ] Workflows CI operatifs
-- [ ] pre-commit actif
-- [ ] Dependabot actif
+- [x] Arborescence creee
+- [x] Fichiers racine complets
+- [x] Workflows CI operatifs
+- [x] pre-commit actif
+- [x] Dependabot actif
+
+Jalon 1 - Backend minimal + Observabilite de base:
+- [ ] FastAPI demarre (/api/v1)
+- [ ] Endpoints GET /health, GET /version
+- [ ] Middleware request_id (header X-Request-ID) + logs JSON correles
+- [ ] Gestion erreurs JSON standardisee
+- [ ] CLI Typer "cc": --version, env, check [--json], ping
+- [ ] Tests OK/KO backend et CLI
+- [ ] Scripts PowerShell: dev_up, dev_down, smoke
+- [ ] CI backend installe requirements.txt et run tests
 
 Notes:
 Ce document prime sur les autres. Proposer patch si divergence.
+
