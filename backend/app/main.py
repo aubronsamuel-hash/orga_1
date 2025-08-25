@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.v1.auth import router as auth_router
+from .api.v1.availabilities import router as avail_router
+from .api.v1.conflicts import router as conflicts_router
 from .api.v1.missions import router as missions_router
 from .api.v1.router import router as v1_meta_router
 from .api.v1.users import router as users_router
@@ -31,8 +33,11 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
     app.include_router(missions_router, prefix="/api/v1")
+    app.include_router(avail_router, prefix="/api/v1")
+    app.include_router(conflicts_router, prefix="/api/v1")
 
     return app
 
 
 app = create_app()
+

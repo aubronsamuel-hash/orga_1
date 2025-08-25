@@ -6,6 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+def _to_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        # considere comme UTC si naive
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
 # --- Users (J3) ---
 
 class UserCreate(BaseModel):
@@ -54,32 +61,24 @@ class LoginIn(BaseModel):
 
 # --- Missions (J4) ---
 
-def _norm_dt(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC)
-
-
 class MissionBase(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(strict=True)
     title: str = Field(min_length=2)
     location: str | None = None
     start_at: datetime
     end_at: datetime
     description: str | None = None
 
-    @field_validator("start_at", "end_at", mode="before")
+    @field_validator("start_at", "end_at")
     @classmethod
-    def _ensure_tz(cls, v: datetime | str) -> datetime:
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+    def _utc_all(cls, v: datetime) -> datetime:
+        return _to_utc(v)
 
     @field_validator("end_at")
     @classmethod
     def _end_after_start(cls, v: datetime, info):
         start = info.data.get("start_at")
-        if isinstance(start, datetime) and _norm_dt(v) <= _norm_dt(start):
+        if isinstance(start, datetime) and v <= start:
             raise ValueError("end_at doit etre > start_at")
         return v
 
@@ -89,27 +88,23 @@ class MissionCreate(MissionBase):
 
 
 class MissionUpdate(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(strict=True)
     title: str | None = None
     location: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
     description: str | None = None
 
-    @field_validator("start_at", "end_at", mode="before")
+    @field_validator("start_at", "end_at")
     @classmethod
-    def _ensure_tz(cls, v: datetime | str | None) -> datetime | None:
-        if v is None:
-            return None
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+    def _utc_all(cls, v: datetime | None) -> datetime | None:
+        return _to_utc(v) if v is not None else None
 
     @field_validator("end_at")
     @classmethod
     def _end_after_start(cls, v: datetime | None, info):
         start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
+        if v is not None and start is not None and v <= start:
             raise ValueError("end_at doit etre > start_at")
         return v
 
@@ -125,53 +120,29 @@ class MissionDetail(MissionOut):
 
 
 class MissionRoleCreate(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(strict=True)
     name: str = Field(min_length=2)
     start_at: datetime | None = None
     end_at: datetime | None = None
     quantity: int = Field(default=1, ge=1)
 
-    @field_validator("start_at", "end_at", mode="before")
+    @field_validator("start_at", "end_at")
     @classmethod
-    def _ensure_tz(cls, v: datetime | str | None) -> datetime | None:
-        if v is None:
-            return None
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
-
-    @field_validator("end_at")
-    @classmethod
-    def _end_after_start(cls, v: datetime | None, info):
-        start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
-            raise ValueError("end_at doit etre > start_at")
-        return v
+    def _utc_all(cls, v: datetime | None) -> datetime | None:
+        return _to_utc(v) if v is not None else None
 
 
 class MissionRoleUpdate(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(strict=True)
     name: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
     quantity: int | None = Field(default=None, ge=1)
 
-    @field_validator("start_at", "end_at", mode="before")
+    @field_validator("start_at", "end_at")
     @classmethod
-    def _ensure_tz(cls, v: datetime | str | None) -> datetime | None:
-        if v is None:
-            return None
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
-
-    @field_validator("end_at")
-    @classmethod
-    def _end_after_start(cls, v: datetime | None, info):
-        start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
-            raise ValueError("end_at doit etre > start_at")
-        return v
+    def _utc_all(cls, v: datetime | None) -> datetime | None:
+        return _to_utc(v) if v is not None else None
 
 
 class MissionRoleOut(BaseModel):
@@ -185,18 +156,16 @@ class MissionRoleOut(BaseModel):
 
 
 class AssignmentCreate(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(strict=True)
     user_id: int
     start_at: datetime
     end_at: datetime
     role_id: int | None = None
 
-    @field_validator("start_at", "end_at", mode="before")
+    @field_validator("start_at", "end_at")
     @classmethod
-    def _ensure_tz(cls, v: datetime | str) -> datetime:
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+    def _utc_all(cls, v: datetime) -> datetime:
+        return _to_utc(v)
 
     @field_validator("end_at")
     @classmethod
@@ -215,4 +184,54 @@ class AssignmentOut(BaseModel):
     role_id: int | None = None
     start_at: datetime
     end_at: datetime
+
+
+# --- Disponibilites (J5) ---
+
+class AvailabilityCreate(BaseModel):
+    model_config = ConfigDict(strict=True)
+    start_at: datetime
+    end_at: datetime
+    note: str | None = None
+
+    @field_validator("start_at", "end_at")
+    @classmethod
+    def _utc_all(cls, v: datetime) -> datetime:
+        return _to_utc(v)
+
+    @field_validator("end_at")
+    @classmethod
+    def _end_after_start(cls, v: datetime, info):
+        start = info.data.get("start_at")
+        if isinstance(start, datetime) and v <= start:
+            raise ValueError("end_at doit etre > start_at")
+        return v
+
+
+class AvailabilityUpdate(BaseModel):
+    model_config = ConfigDict(strict=True)
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    note: str | None = None
+
+    @field_validator("start_at", "end_at")
+    @classmethod
+    def _utc_all(cls, v: datetime | None) -> datetime | None:
+        return _to_utc(v) if v is not None else None
+
+    @field_validator("end_at")
+    @classmethod
+    def _end_after_start(cls, v: datetime | None, info):
+        start = info.data.get("start_at")
+        if v is not None and start is not None and v <= start:
+            raise ValueError("end_at doit etre > start_at")
+        return v
+
+
+class AvailabilityOut(BaseModel):
+    model_config = ConfigDict(strict=True, from_attributes=True)
+    id: int
+    start_at: datetime
+    end_at: datetime
+    note: str | None = None
 
