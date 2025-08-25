@@ -1,8 +1,12 @@
 [project]
 name = "ccw-backend"
-version = "0.0.0"
-description = "Bootstrap backend skeleton"
+version = "0.1.0"
+description = "CCW backend minimal (Jalon 1)"
 requires-python = ">=3.12"
+
+[project.scripts]
+# Installation optionnelle; tests importent directement app.cli
+cc = "app.cli:app"
 
 [tool.ruff]
 target-version = "py312"
@@ -15,3 +19,4 @@ python_version = "3.12"
 strict = false
 warn_unused_ignores = true
 ignore_missing_imports = true
+
