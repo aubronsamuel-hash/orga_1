@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from sqlalchemy import and_, or_, select
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...audit import write_audit
@@ -82,7 +82,14 @@ def create_mission(
     db.add(m)
     db.commit()
     db.refresh(m)
-    write_audit(db, actor_user_id=user_id, action="mission.create", entity="mission", entity_id=m.id, details={"title": m.title})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="mission.create",
+        entity="mission",
+        entity_id=str(m.id),
+        details={"title": m.title},
+    )
     return MissionOut.model_validate(m)
 
 
@@ -134,7 +141,14 @@ def update_mission(
     _ensure_bounds(m)
     db.commit()
     db.refresh(m)
-    write_audit(db, actor_user_id=user_id, action="mission.update", entity="mission", entity_id=m.id, details={"title": m.title})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="mission.update",
+        entity="mission",
+        entity_id=str(m.id),
+        details={"title": m.title},
+    )
     return MissionOut.model_validate(m)
 
 
@@ -149,7 +163,14 @@ def delete_mission(
         raise HTTPException(status_code=404, detail="Mission introuvable")
     db.delete(m)
     db.commit()
-    write_audit(db, actor_user_id=user_id, action="mission.delete", entity="mission", entity_id=mid, details={})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="mission.delete",
+        entity="mission",
+        entity_id=str(mid),
+        details={},
+    )
     return None
 
 
@@ -178,7 +199,14 @@ def create_role(
     db.add(r)
     db.commit()
     db.refresh(r)
-    write_audit(db, actor_user_id=user_id, action="role.create", entity="role", entity_id=r.id, details={"mission_id": mid})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="role.create",
+        entity="role",
+        entity_id=str(r.id),
+        details={"mission_id": mid},
+    )
     return MissionRoleOut.model_validate(r)
 
 
@@ -210,7 +238,14 @@ def update_role(
         r.quantity = body.quantity
     db.commit()
     db.refresh(r)
-    write_audit(db, actor_user_id=user_id, action="role.update", entity="role", entity_id=r.id, details={"mission_id": mid})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="role.update",
+        entity="role",
+        entity_id=str(r.id),
+        details={"mission_id": mid},
+    )
     return MissionRoleOut.model_validate(r)
 
 
@@ -221,7 +256,14 @@ def delete_role(mid: int, rid: int, user_id: int = Depends(get_current_user_id),
         raise HTTPException(status_code=404, detail="Role introuvable")
     db.delete(r)
     db.commit()
-    write_audit(db, actor_user_id=user_id, action="role.delete", entity="role", entity_id=rid, details={"mission_id": mid})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="role.delete",
+        entity="role",
+        entity_id=str(rid),
+        details={"mission_id": mid},
+    )
     return None
 
 
@@ -256,7 +298,14 @@ def create_assignment(
     db.add(a)
     db.commit()
     db.refresh(a)
-    write_audit(db, actor_user_id=user_id, action="assignment.create", entity="assignment", entity_id=a.id, details={"mission_id": mid})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="assignment.create",
+        entity="assignment",
+        entity_id=str(a.id),
+        details={"mission_id": mid},
+    )
     return AssignmentOut.model_validate(a)
 
 
@@ -267,5 +316,12 @@ def delete_assignment(mid: int, aid: int, user_id: int = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Assignment introuvable")
     db.delete(a)
     db.commit()
-    write_audit(db, actor_user_id=user_id, action="assignment.delete", entity="assignment", entity_id=aid, details={"mission_id": mid})
+    write_audit(
+        db,
+        actor_user_id=user_id,
+        action="assignment.delete",
+        entity="assignment",
+        entity_id=str(aid),
+        details={"mission_id": mid},
+    )
     return None

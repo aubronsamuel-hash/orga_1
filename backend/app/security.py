@@ -1,7 +1,7 @@
 import hashlib
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 import jwt
@@ -13,7 +13,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(plain: str) -> str:
-    s = get_settings()
     return pwd_context.hash(plain)
 
 
@@ -22,16 +21,16 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
-def create_jwt(payload: Dict[str, Any], ttl_seconds: int) -> str:
+def create_jwt(payload: dict[str, Any], ttl_seconds: int) -> str:
     s = get_settings()
     to_encode = {**payload, "iat": int(time.time()), "exp": int(time.time()) + ttl_seconds}
     return jwt.encode(to_encode, s.jwt_secret, algorithm=s.jwt_alg)
 
 
-def decode_jwt(token: str) -> Dict[str, Any]:
+def decode_jwt(token: str) -> dict[str, Any]:
     s = get_settings()
     return jwt.decode(token, s.jwt_secret, algorithms=[s.jwt_alg])
 

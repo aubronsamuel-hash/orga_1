@@ -1,6 +1,7 @@
 from functools import lru_cache
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
+
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
 
     rate_limit_login_max: int = 5
     rate_limit_login_window_sec: int = 60
+    rate_limit_test_prefix: str = ""
     auth_max_fails: int = 5
     auth_lock_minutes: int = 10
 
@@ -46,5 +48,5 @@ class Version(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[arg-type]
+    return Settings()
 
