@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/health", response_model=Health, tags=["meta"])
 def health() -> Health:
-    return Health(status="ok", time_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    return Health(status="ok", time_utc=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
 @router.get("/version", response_model=Version, tags=["meta"])

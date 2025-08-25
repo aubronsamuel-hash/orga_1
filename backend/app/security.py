@@ -42,7 +42,10 @@ def make_access_token(user_id: int) -> str:
 
 def make_refresh_token(user_id: int) -> str:
     s = get_settings()
-    return create_jwt({"sub": str(user_id), "typ": "refresh", "jti": str(uuid4())}, s.refresh_ttl_seconds)
+    return create_jwt(
+        {"sub": str(user_id), "typ": "refresh", "jti": str(uuid4())},
+        s.refresh_ttl_seconds,
+    )
 
 
 def sha256_hex(s: str) -> str:

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from ...config import get_settings
 from ...db import Base, get_engine
 from ...deps import get_current_user_id, get_db
 from ...models import RefreshToken, User
-from ...rate_limit import hit
+from ...rate_limit import check_and_inc
 from ...schemas import LoginIn, TokenPair, UserCreate, UserOut
 from ...security import (
     hash_password,
@@ -27,7 +28,9 @@ def ensure_tables() -> None:
 
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
-def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
+def register(
+    user_in: UserCreate, db: Annotated[Session, Depends(get_db)]
+) -> UserOut:
     ensure_tables()
     existing = db.scalar(select(User).where(User.email == user_in.email.lower()))
     if existing:
@@ -40,15 +43,15 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
 
 
 @router.post("/auth/login", response_model=TokenPair)
-def login(body: LoginIn, request: Request, db: Session = Depends(get_db)) -> TokenPair:
+def login(
+    body: LoginIn,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> TokenPair:
     ensure_tables()
     s = get_settings()
     ip = request.client.host if request.client else "unknown"
-    key_ip = f"login:ip:{ip}"
-    key_user = f"login:user:{body.email.lower()}"
-    if not hit(key_ip, s.rate_limit_login_max, s.rate_limit_login_window_sec) or not hit(
-        key_user, s.rate_limit_login_max, s.rate_limit_login_window_sec
-    ):
+    if not check_and_inc(f"ip:{ip}") or not check_and_inc(f"user:{body.email.lower()}"):
         raise HTTPException(status_code=429, detail="Trop de tentatives, reessayez plus tard")
 
     u = db.scalar(select(User).where(User.email == body.email.lower()))
@@ -90,7 +93,9 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)) -> Tok
 
 
 @router.post("/auth/refresh", response_model=TokenPair)
-def refresh_token(refresh_token: str, db: Session = Depends(get_db)) -> TokenPair:
+def refresh_token(
+    refresh_token: str, db: Annotated[Session, Depends(get_db)]
+) -> TokenPair:
     ensure_tables()
     s = get_settings()
     # We do not decode refresh JWT here to keep rotation strict: we trust DB blacklist
@@ -116,11 +121,15 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)) -> TokenPai
     )
     db.add(new_rt)
     db.commit()
-    return TokenPair(access_token=access, refresh_token=new_refresh, expires_in=s.access_ttl_seconds)
+    return TokenPair(
+        access_token=access,
+        refresh_token=new_refresh,
+        expires_in=s.access_ttl_seconds,
+    )
 
 
 @router.post("/auth/logout", status_code=204)
-def logout(refresh_token: str, db: Session = Depends(get_db)) -> None:
+def logout(refresh_token: str, db: Annotated[Session, Depends(get_db)]) -> None:
     ensure_tables()
     h = sha256_hex(refresh_token)
     rt = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == h))
@@ -131,7 +140,10 @@ def logout(refresh_token: str, db: Session = Depends(get_db)) -> None:
 
 
 @router.post("/auth/2fa/enable", status_code=204)
-def enable_2fa(_: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> None:
+def enable_2fa(
+    _: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
     # Stub: just flag enabled, secret placeholder
     ensure_tables()
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from ...schemas import (
     MissionRoleOut,
     MissionRoleUpdate,
     MissionUpdate,
+    _norm_utc,
 )
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -37,17 +39,29 @@ def _role_inside_mission(m: Mission, start_at: datetime | None, end_at: datetime
 
 
 def _assignment_inside_mission(m: Mission, start_at: datetime, end_at: datetime) -> None:
-    if start_at < m.start_at or end_at > m.end_at:
+    s = _norm_utc(start_at)
+    e = _norm_utc(end_at)
+    ms = _norm_utc(m.start_at)
+    me = _norm_utc(m.end_at)
+    if s < ms or e > me:
         raise HTTPException(status_code=422, detail="assignment hors mission")
-    if end_at <= start_at:
+    if e <= s:
         raise HTTPException(status_code=422, detail="assignment end_at doit etre > start_at")
 
 
-def _overlap_exists(db: Session, user_id: int, start_at: datetime, end_at: datetime, exclude_id: int | None = None) -> bool:
+def _overlap_exists(
+    db: Session,
+    user_id: int,
+    start_at: datetime,
+    end_at: datetime,
+    exclude_id: int | None = None,
+) -> bool:
+    s = _norm_utc(start_at)
+    e = _norm_utc(end_at)
     q = select(Assignment).where(
         Assignment.user_id == user_id,
-        Assignment.start_at < end_at,
-        Assignment.end_at > start_at,
+        Assignment.start_at < e,
+        Assignment.end_at > s,
     )
     if exclude_id:
         q = q.where(Assignment.id != exclude_id)
@@ -56,20 +70,27 @@ def _overlap_exists(db: Session, user_id: int, start_at: datetime, end_at: datet
 
 @router.get("", response_model=list[MissionOut])
 def list_missions(
-    _: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    _: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> list[MissionOut]:
-    rows = db.scalars(select(Mission).order_by(Mission.start_at.desc()).limit(limit).offset(offset)).all()
+    rows = (
+        db.scalars(
+            select(Mission)
+                .order_by(Mission.start_at.desc())
+                .limit(limit)
+                .offset(offset)
+        ).all()
+    )
     return [MissionOut.model_validate(x) for x in rows]
 
 
 @router.post("", response_model=MissionOut, status_code=201)
 def create_mission(
     body: MissionCreate,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionOut:
     m = Mission(
         title=body.title,
@@ -95,9 +116,9 @@ def create_mission(
 
 @router.get("/{mid}", response_model=MissionDetail)
 def get_mission(
+    _: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
     mid: int = Path(..., ge=1),
-    _: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
 ) -> MissionDetail:
     m = db.get(Mission, mid)
     if not m:
@@ -122,8 +143,8 @@ def get_mission(
 def update_mission(
     mid: int,
     body: MissionUpdate,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionOut:
     m = db.get(Mission, mid)
     if not m:
@@ -155,8 +176,8 @@ def update_mission(
 @router.delete("/{mid}", status_code=204)
 def delete_mission(
     mid: int,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
     m = db.get(Mission, mid)
     if not m:
@@ -177,7 +198,11 @@ def delete_mission(
 # --- Roles ---
 
 @router.get("/{mid}/roles", response_model=list[MissionRoleOut])
-def list_roles(mid: int, _: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> list[MissionRoleOut]:
+def list_roles(
+    mid: int,
+    _: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[MissionRoleOut]:
     if not db.get(Mission, mid):
         raise HTTPException(status_code=404, detail="Mission introuvable")
     rows = db.scalars(select(MissionRole).where(MissionRole.mission_id == mid)).all()
@@ -188,14 +213,20 @@ def list_roles(mid: int, _: int = Depends(get_current_user_id), db: Session = De
 def create_role(
     mid: int,
     body: MissionRoleCreate,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionRoleOut:
     m = db.get(Mission, mid)
     if not m:
         raise HTTPException(status_code=404, detail="Mission introuvable")
     _role_inside_mission(m, body.start_at, body.end_at)
-    r = MissionRole(mission_id=mid, name=body.name, start_at=body.start_at, end_at=body.end_at, quantity=body.quantity)
+    r = MissionRole(
+        mission_id=mid,
+        name=body.name,
+        start_at=body.start_at,
+        end_at=body.end_at,
+        quantity=body.quantity,
+    )
     db.add(r)
     db.commit()
     db.refresh(r)
@@ -215,8 +246,8 @@ def update_role(
     mid: int,
     rid: int,
     body: MissionRoleUpdate,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MissionRoleOut:
     m = db.get(Mission, mid)
     if not m:
@@ -250,7 +281,12 @@ def update_role(
 
 
 @router.delete("/{mid}/roles/{rid}", status_code=204)
-def delete_role(mid: int, rid: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> None:
+def delete_role(
+    mid: int,
+    rid: int,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
     r = db.get(MissionRole, rid)
     if not r or r.mission_id != mid:
         raise HTTPException(status_code=404, detail="Role introuvable")
@@ -270,7 +306,11 @@ def delete_role(mid: int, rid: int, user_id: int = Depends(get_current_user_id),
 # --- Assignments ---
 
 @router.get("/{mid}/assignments", response_model=list[AssignmentOut])
-def list_assignments(mid: int, _: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> list[AssignmentOut]:
+def list_assignments(
+    mid: int,
+    _: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[AssignmentOut]:
     if not db.get(Mission, mid):
         raise HTTPException(status_code=404, detail="Mission introuvable")
     rows = db.scalars(select(Assignment).where(Assignment.mission_id == mid)).all()
@@ -281,8 +321,8 @@ def list_assignments(mid: int, _: int = Depends(get_current_user_id), db: Sessio
 def create_assignment(
     mid: int,
     body: AssignmentCreate,
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> AssignmentOut:
     m = db.get(Mission, mid)
     if not m:
@@ -294,7 +334,13 @@ def create_assignment(
     _assignment_inside_mission(m, body.start_at, body.end_at)
     if _overlap_exists(db, user_id=body.user_id, start_at=body.start_at, end_at=body.end_at):
         raise HTTPException(status_code=409, detail="Assignment overlap pour cet utilisateur")
-    a = Assignment(mission_id=mid, role_id=body.role_id, user_id=body.user_id, start_at=body.start_at, end_at=body.end_at)
+    a = Assignment(
+        mission_id=mid,
+        role_id=body.role_id,
+        user_id=body.user_id,
+        start_at=body.start_at,
+        end_at=body.end_at,
+    )
     db.add(a)
     db.commit()
     db.refresh(a)
@@ -310,7 +356,12 @@ def create_assignment(
 
 
 @router.delete("/{mid}/assignments/{aid}", status_code=204)
-def delete_assignment(mid: int, aid: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> None:
+def delete_assignment(
+    mid: int,
+    aid: int,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
     a = db.get(Assignment, aid)
     if not a or a.mission_id != mid:
         raise HTTPException(status_code=404, detail="Assignment introuvable")

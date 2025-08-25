@@ -2,7 +2,7 @@ import json
 import platform
 import socket
 import time
-from typing import Any, Dict
+from typing import Any
 
 import typer
 
@@ -36,7 +36,7 @@ def ping() -> None:
 @app.command()
 def check(json_out: bool = typer.Option(False, "--json", help="Sortie JSON compacte")) -> None:
     ok = True
-    details: Dict[str, Any] = {
+    details: dict[str, Any] = {
         "python": platform.python_version(),
         "host": socket.gethostname(),
         "time": int(time.time()),

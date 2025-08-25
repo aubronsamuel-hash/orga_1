@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
+
 from app.main import app
+
 
 def test_rate_limit_login_triggers_429():
     c = TestClient(app)

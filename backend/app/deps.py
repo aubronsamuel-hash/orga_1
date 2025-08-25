@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -16,7 +18,9 @@ def get_db():
         db.close()
 
 
-def get_current_user_id(cred: HTTPAuthorizationCredentials | None = Depends(bearer)) -> int:
+def get_current_user_id(
+    cred: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
+) -> int:
     if cred is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
     try:
@@ -25,7 +29,10 @@ def get_current_user_id(cred: HTTPAuthorizationCredentials | None = Depends(bear
             raise ValueError("Not access token")
         return int(payload["sub"])
     except Exception as err:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from err
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        ) from err
 
 
 def require_admin(is_admin: bool) -> None:

@@ -1,7 +1,7 @@
 import re
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -54,7 +54,7 @@ class LoginIn(BaseModel):
 
 # --- Missions (J4) ---
 
-def _norm_dt(dt: datetime) -> datetime:
+def _norm_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC)
@@ -62,26 +62,20 @@ def _norm_dt(dt: datetime) -> datetime:
 
 class MissionBase(BaseModel):
     model_config = ConfigDict()
-    title: str = Field(min_length=2)
+    title: str
     location: str | None = None
     start_at: datetime
     end_at: datetime
     description: str | None = None
 
-    @field_validator("start_at", "end_at", mode="before")
-    @classmethod
-    def _ensure_tz(cls, v: datetime | str) -> datetime:
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
-
-    @field_validator("end_at")
-    @classmethod
-    def _end_after_start(cls, v: datetime, info):
-        start = info.data.get("start_at")
-        if isinstance(start, datetime) and _norm_dt(v) <= _norm_dt(start):
-            raise ValueError("end_at doit etre > start_at")
-        return v
+    @model_validator(mode="after")
+    def _check_and_normalize(self) -> "MissionBase":
+        s = _norm_utc(self.start_at)
+        e = _norm_utc(self.end_at)
+        if e <= s:
+            raise ValueError("end_at must be greater than start_at")
+        self.start_at, self.end_at = s, e
+        return self
 
 
 class MissionCreate(MissionBase):
@@ -96,22 +90,15 @@ class MissionUpdate(BaseModel):
     end_at: datetime | None = None
     description: str | None = None
 
-    @field_validator("start_at", "end_at", mode="before")
-    @classmethod
-    def _ensure_tz(cls, v: datetime | str | None) -> datetime | None:
-        if v is None:
-            return None
-        if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return _norm_dt(v)
-
-    @field_validator("end_at")
-    @classmethod
-    def _end_after_start(cls, v: datetime | None, info):
-        start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
-            raise ValueError("end_at doit etre > start_at")
-        return v
+    @model_validator(mode="after")
+    def _check_and_normalize(self) -> "MissionUpdate":
+        if self.start_at is not None:
+            self.start_at = _norm_utc(self.start_at)
+        if self.end_at is not None:
+            self.end_at = _norm_utc(self.end_at)
+        if self.start_at and self.end_at and self.end_at <= self.start_at:
+            raise ValueError("end_at must be greater than start_at")
+        return self
 
 
 class MissionOut(MissionBase):
@@ -138,13 +125,13 @@ class MissionRoleCreate(BaseModel):
             return None
         if isinstance(v, str):
             v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+        return _norm_utc(v)
 
     @field_validator("end_at")
     @classmethod
     def _end_after_start(cls, v: datetime | None, info):
         start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
+        if v is not None and start is not None and _norm_utc(v) <= _norm_utc(start):
             raise ValueError("end_at doit etre > start_at")
         return v
 
@@ -163,13 +150,13 @@ class MissionRoleUpdate(BaseModel):
             return None
         if isinstance(v, str):
             v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+        return _norm_utc(v)
 
     @field_validator("end_at")
     @classmethod
     def _end_after_start(cls, v: datetime | None, info):
         start = info.data.get("start_at")
-        if v is not None and start is not None and _norm_dt(v) <= _norm_dt(start):
+        if v is not None and start is not None and _norm_utc(v) <= _norm_utc(start):
             raise ValueError("end_at doit etre > start_at")
         return v
 
@@ -196,7 +183,7 @@ class AssignmentCreate(BaseModel):
     def _ensure_tz(cls, v: datetime | str) -> datetime:
         if isinstance(v, str):
             v = datetime.fromisoformat(v)
-        return _norm_dt(v)
+        return _norm_utc(v)
 
     @field_validator("end_at")
     @classmethod

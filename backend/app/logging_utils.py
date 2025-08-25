@@ -1,21 +1,21 @@
 import json
 import logging
-from typing import Any, Dict, Optional
 from contextvars import ContextVar
+from typing import Any
 
-request_id_ctx: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
 class RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401
         rid = request_id_ctx.get()
-        setattr(record, "request_id", rid or "-")
+        record.request_id = rid or "-"
         return True
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:  # noqa: D401
-        base: Dict[str, Any] = {
+        base: dict[str, Any] = {
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

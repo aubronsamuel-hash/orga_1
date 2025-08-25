@@ -15,7 +15,12 @@ def create_app() -> FastAPI:
     s = get_settings()
     setup_logging(s.log_level)
 
-    app = FastAPI(title=s.app_name, version=s.api_version, openapi_url="/api/v1/openapi.json")
+    app = FastAPI(
+        title=s.app_name,
+        version=s.api_version,
+        openapi_url="/api/v1/openapi.json",
+        debug=True,
+    )
 
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(

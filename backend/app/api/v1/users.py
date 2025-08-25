@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,7 +13,10 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserOut)
-def me(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> UserOut:
+def me(
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> UserOut:
     u = db.get(User, user_id)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
@@ -20,8 +25,8 @@ def me(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db
 
 @router.get("", response_model=list[UserOut])
 def list_users(
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> list[UserOut]:
@@ -33,7 +38,9 @@ def list_users(
 
 @router.post("", response_model=UserOut, status_code=201)
 def create_user(
-    body: UserCreate, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)
+    body: UserCreate,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> UserOut:
     u = db.get(User, user_id)
     require_admin(u.is_admin if u else False)
@@ -49,7 +56,10 @@ def create_user(
 
 @router.patch("/{uid}", response_model=UserOut)
 def update_user(
-    uid: int, body: UserUpdate, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)
+    uid: int,
+    body: UserUpdate,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> UserOut:
     u = db.get(User, user_id)
     require_admin(u.is_admin if u else False)
@@ -66,7 +76,11 @@ def update_user(
 
 
 @router.delete("/{uid}", status_code=204)
-def delete_user(uid: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)) -> None:
+def delete_user(
+    uid: int,
+    user_id: Annotated[int, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
     u = db.get(User, user_id)
     require_admin(u.is_admin if u else False)
     target = db.get(User, uid)

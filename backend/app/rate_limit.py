@@ -1,63 +1,52 @@
+"""Simple rate limiting utilities for login attempts."""
+
+from __future__ import annotations
+
+import os
 import time
 
-from redis import Redis
-from redis.exceptions import RedisError
+import redis
 
-from .config import get_settings
+PREFIX = os.getenv("RATE_LIMIT_TEST_PREFIX", "")
+WINDOW = int(os.getenv("RATE_LIMIT_WINDOW_SEC", "60"))
+LIMIT = int(os.getenv("RATE_LIMIT_LOGIN_PER_MIN", "10"))
+r = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
 
-_memory_store: dict[str, tuple[int, float]] = {}  # key -> (count, window_start_ts)
-
-
-def _prefix(key: str) -> str:
-    s = get_settings()
-    return f"{s.rate_limit_test_prefix}{key}" if s.rate_limit_test_prefix else key
+_MEMORY_STORE: dict[str, list[int]] = {}
 
 
-def _redis_client() -> Redis | None:
-    s = get_settings()
-    if not s.redis_url:
-        return None
-    try:
-        return Redis.from_url(s.redis_url, decode_responses=True)
-    except Exception:
-        return None
+def key(user_or_ip: str) -> str:
+    return f"{PREFIX}login:{user_or_ip}"
 
 
-def hit(key: str, limit: int, window_sec: int) -> bool:
-    """
-    Return True if within limit after this hit, False if blocked.
-    """
-    key = _prefix(key)
-    r = _redis_client()
+def check_and_inc(user_or_ip: str) -> bool:
+    k = key(user_or_ip)
     now = int(time.time())
-    if r:
-        try:
-            pipe = r.pipeline()
-            pipe.incr(key)
-            pipe.expire(key, window_sec)
-            count, _ = pipe.execute()
-            return int(count) <= limit
-        except RedisError:
-            pass
-    # Fallback memory
-    count, start = _memory_store.get(key, (0, now))
-    if now - start >= window_sec:
-        count, start = 0, now
-    count += 1
-    _memory_store[key] = (count, start)
-    return count <= limit
+    try:
+        with r.pipeline() as p:
+            p.zremrangebyscore(k, 0, now - WINDOW)
+            p.zadd(k, {str(now): now})
+            p.zcard(k)
+            p.expire(k, WINDOW)
+            _, _, count, _ = p.execute()
+        return int(count) <= LIMIT
+    except Exception:
+        # Fallback in-memory store if Redis is unavailable
+        hits = [ts for ts in _MEMORY_STORE.get(k, []) if ts > now - WINDOW]
+        hits.append(now)
+        _MEMORY_STORE[k] = hits
+        return len(hits) <= LIMIT
 
 
-def clear_rate_limit_test_keys() -> None:
-    s = get_settings()
-    prefix = s.rate_limit_test_prefix
-    if not prefix:
+def clear_test_keys() -> None:
+    if not PREFIX:
         return
-    r = _redis_client()
-    if r:
-        for k in r.scan_iter(f"{prefix}*"):
+    try:
+        for k in r.scan_iter(f"{PREFIX}*"):
             r.delete(k)
-    for k in list(_memory_store.keys()):
-        if k.startswith(prefix):
-            del _memory_store[k]
+    except Exception:
+        pass
+    for k in list(_MEMORY_STORE.keys()):
+        if k.startswith(PREFIX):
+            del _MEMORY_STORE[k]
 
