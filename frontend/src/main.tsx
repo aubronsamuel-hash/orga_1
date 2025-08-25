@@ -6,6 +6,8 @@ import Health from "./pages/Health";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import Missions from "./pages/Missions";
+import MissionDetails from "./pages/MissionDetails";
 import { getTokens } from "./lib/auth";
 import "./index.css";
 
@@ -16,6 +18,7 @@ function Nav() {
       <div className="max-w-5xl mx-auto p-4 flex gap-4">
         <Link to="/">Accueil</Link>
         <Link to="/health">Health</Link>
+        <Link to="/missions">Missions</Link>
         {!authed && <Link to="/login">Login</Link>}
         {!authed && <Link to="/register">Register</Link>}
         {authed && <Link to="/profile">Profil</Link>}
@@ -36,6 +39,8 @@ function Shell() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/health" element={<Health />} />
+          <Route path="/missions" element={<RequireAuth><Missions /></RequireAuth>} />
+          <Route path="/missions/:id" element={<RequireAuth><MissionDetails /></RequireAuth>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
@@ -50,4 +55,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <Shell />
   </React.StrictMode>
 );
-
