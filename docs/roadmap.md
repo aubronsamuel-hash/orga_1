@@ -24,12 +24,16 @@ Jalon 0 - Bootstrap:
 Jalon 1 - Backend minimal + Observabilite de base:
 - [ ] FastAPI demarre (/api/v1)
 - [ ] Endpoints GET /health, GET /version
-- [ ] Middleware request_id (header X-Request-ID) + logs JSON correles
-- [ ] Gestion erreurs JSON standardisee
-- [ ] CLI Typer "cc": --version, env, check [--json], ping
-- [ ] Tests OK/KO backend et CLI
-- [ ] Scripts PowerShell: dev_up, dev_down, smoke
-- [ ] CI backend installe requirements.txt et run tests
+- [ ] Middleware request_id + logs JSON
+- [ ] CLI Typer "cc"
+- [ ] Tests + scripts PS
+
+Jalon 2 - Frontend base:
+- [ ] Page /health OK (Loading/OK/KO)
+- [ ] Tailwind + UI compatibles shadcn operatifs
+- [ ] Lint + build OK
+- [ ] Tests vitest OK (+ a11y axe)
+- [ ] Storybook OK
 
 Notes:
 Ce document prime sur les autres. Proposer patch si divergence.
